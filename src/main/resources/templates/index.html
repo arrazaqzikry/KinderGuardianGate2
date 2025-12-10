@@ -45,20 +45,20 @@
             border-color: #888;
         }
 
-        .login-card button {
+        .login-card a.button {
+            display: inline-block;
             width: 100%;
             padding: 12px;
             border-radius: 12px;
-            border: none;
             background-color: #4CAF50;
             color: white;
             font-size: 16px;
-            cursor: pointer;
+            text-decoration: none;
             margin-top: 15px;
             transition: background 0.3s;
         }
 
-        .login-card button:hover {
+        .login-card a.button:hover {
             background-color: #45a049;
         }
 
@@ -80,12 +80,11 @@
 <body>
 <div class="login-card">
     <h2>Login</h2>
-    <form action="dashboard.html" method="POST">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-    </form>
-    <p>Don't have an account? <a href="register.html">Register</a></p>
+    <input type="text" placeholder="Username" required>
+    <input type="password" placeholder="Password" required>
+    <!-- Redirect using href -->
+    <a href="dashboard" class="button">Login</a>
+    <p>Don't have an account? <a href="register">Register</a></p>
 </div>
 </body>
 </html>

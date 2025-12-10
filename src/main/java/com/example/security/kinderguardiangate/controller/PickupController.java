@@ -13,9 +13,9 @@ public class PickupController {
         this.pickupService = pickupService;
     }
 
-    @GetMapping("/login")
+    @GetMapping("/index")
     public String home() {
-        return "login";
+        return "index";
     }
 
     @GetMapping("/register")

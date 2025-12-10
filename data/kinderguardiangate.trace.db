@@ -3547,6 +3547,8 @@ Caused by: org.h2.mvstore.MVStoreException: The file is locked: /Users/mac/Docum
 	... 62 more
 2025-12-10 22:07:02.794573+08:00 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2025-12-10 23:05:24.133406+08:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
 2025-12-10 23:06:53.093041+08:00 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
 2025-12-10 23:07:11.309118+08:00 jdbc[3]: exception
