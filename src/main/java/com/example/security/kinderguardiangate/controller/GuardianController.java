@@ -106,45 +106,41 @@ public class GuardianController {
                 .filter(g -> g.getIcNumber().equalsIgnoreCase(icNumber))
                 .findFirst();
 
-        // Create a new scan log
+        // Create a new scan log object
         ScanLog log = new ScanLog();
         log.setTimestamp(LocalDateTime.now());
+        log.setScannedIc(icNumber);
 
         if (guardianOpt.isPresent()) {
             Guardian guardian = guardianOpt.get();
-            List<String> children = guardian.getStudents().stream()
-                    .map(Student::getName)
+
+            // --- SUCCESS LOGIC: Prepare response, DO NOT SAVE LOG HERE ---
+            List<Map<String, Object>> children = guardian.getStudents().stream()
+                    .map(student -> {
+                        Map<String, Object> childInfo = new HashMap<>();
+                        childInfo.put("id", student.getId());
+                        childInfo.put("name", student.getName());
+                        return childInfo;
+                    })
                     .toList();
 
             response.put("status", "success");
             response.put("guardianName", guardian.getName());
             response.put("children", children);
 
-            log.setGuardian(guardian);
-            log.setStatus("AUTHORIZED");
-
-            // Correctly get the first child
-            if (!guardian.getStudents().isEmpty()) {
-                Student firstChild = guardian.getStudents().iterator().next();
-                log.setStudent(firstChild);
-            }
+            // The method finishes here without saving the log
+            return response;
 
         } else {
-            // Unauthorized scan
+            // --- UNAUTHORIZED LOGIC: ONLY SAVE LOGS FOR FAILURES HERE ---
             response.put("status", "failure");
-            response.put("guardianName", icNumber);
+            response.put("guardianName", "Unknown");
             response.put("children", List.of());
 
             log.setStatus("UNAUTHORIZED");
+            scanLogRepo.save(log); // ONLY save if UNAUTHORIZED
+
+            return response;
         }
-
-        // Save log to H2 database
-        scanLogRepo.save(log);
-
-        return response;
     }
-
-
-
-
 }

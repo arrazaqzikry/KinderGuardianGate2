@@ -67,7 +67,7 @@ public class PickupService {
                 ScanLog log = new ScanLog();
                 log.setStudent(student);
                 log.setGuardian(guardian);
-                log.setStatus("PICKED_UP");
+                log.setStatus("AUTHORIZED");
                 log.setTimestamp(LocalDateTime.now());
                 logRepo.save(log);
 

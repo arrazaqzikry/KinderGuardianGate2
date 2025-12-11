@@ -1,9 +1,9 @@
 // Notifications
-function showNotification(message) {
+function showNotification(message, type = 'default') {
     const notif = document.getElementById('notification');
     notif.innerText = message;
-    notif.classList.add('show');
-    setTimeout(() => notif.classList.remove('show'), 3000);
+    notif.className = `notification show ${type}`;
+    setTimeout(() => notif.classList.remove('show', 'success', 'error'), 3000);
 }
 
 // Clock
@@ -11,54 +11,92 @@ function updateTime() {
     document.getElementById('currentTime').innerText = new Date().toLocaleString();
 }
 
+// Global state for security checks
+let lastVerifiedGuardian = null;
+let lastVerifiedChildrenMap = {};
+
 // Fetch pickups and update dashboard table/stats
 async function fetchPickups() {
     try {
         const response = await fetch('/api/pickups');
         const pickups = await response.json();
 
-        // Stats
         document.getElementById('totalPickups').innerText = pickups.length;
-        const unauthorized = pickups.filter(p => p.status === 'UNAUTHORIZED').length;
-        const pending = pickups.filter(p => p.status === 'PENDING').length;
+        const unauthorized = pickups.filter(p => p.status && (p.status === 'UNAUTHORIZED' || p.status === 'ABSENT_BLOCK')).length;
+        const pending = pickups.filter(p => p.status && p.status === 'PENDING').length;
+
         document.getElementById('unauthPickups').innerText = unauthorized;
         document.getElementById('pendingPickups').innerText = pending;
 
         // Update pickup table
         const tableBody = document.getElementById('pickupTable');
         tableBody.innerHTML = '';
+
         pickups.forEach(p => {
             const row = document.createElement('tr');
+
+            let displayStatus = p.status;
+            let statusClass = '';
+
+            // Mapping server statuses to display statuses
+            if (p.status === 'PICKED_UP' || p.status === 'AUTHORIZED') {
+                statusClass = 'authorized';
+                displayStatus = 'AUTHORIZED';
+            } else if (p.status === 'ABSENT_BLOCK') {
+                statusClass = 'unauthorized';
+                displayStatus = 'ABSENT';
+            } else if (p.status === 'UNAUTHORIZED') {
+                statusClass = 'unauthorized';
+                displayStatus = 'UNAUTHORIZED';
+            }
+            row.classList.add(statusClass);
+
+            const studentDisplay = (p.status === 'UNAUTHORIZED' || !p.studentName || p.studentName === '-') ? '-' : p.studentName;
+
             row.innerHTML = `
-                <td>${p.guardianName}</td>
-                <td>${p.studentName}</td>
+                <td>${p.guardianName || 'Unknown'}</td>
+                <td>${p.parentIC || '-'}</td> 
+                <td>${studentDisplay}</td>
                 <td>${new Date(p.timestamp).toLocaleString()}</td>
-                <td>${p.status}</td>
+                <td>${displayStatus || '-'}</td>
             `;
             tableBody.appendChild(row);
         });
 
     } catch (error) {
         console.error('Error fetching pickups:', error);
-        showNotification('Error fetching pickup data');
+        showNotification('Error fetching pickup data', 'error');
     }
 }
 
-// Show children checkboxes in modal (even for single child)
+// Show children checkboxes in modal
 function showChildrenCheckboxes(children) {
     const container = document.getElementById('childrenCheckboxes');
     container.innerHTML = '';
+    lastVerifiedChildrenMap = {};
 
-    children.forEach((child, idx) => {
+    children.forEach((child) => {
+        const childName = child.name;
+        const childId = child.id;
+
+        if (!childName) {
+            console.error("Child object missing 'name' property:", child);
+            return;
+        }
+
+        lastVerifiedChildrenMap[childName] = childId;
+
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.id = `child-${idx}`;
-        checkbox.value = child;
+        checkbox.id = `child-${childId}`;
+        checkbox.value = childName;
         checkbox.checked = true;
 
         const label = document.createElement('label');
-        label.htmlFor = `child-${idx}`;
-        label.innerText = child;
+        label.htmlFor = `child-${childId}`;
+
+        const statusText = child.status && child.status !== 'PRESENT' ? ` (${child.status})` : '';
+        label.innerText = childName + statusText;
 
         const div = document.createElement('div');
         div.appendChild(checkbox);
@@ -67,7 +105,6 @@ function showChildrenCheckboxes(children) {
         container.appendChild(div);
     });
 
-    // Show modal
     document.getElementById('childrenModal').style.display = 'block';
 }
 
@@ -76,14 +113,11 @@ function closeModal() {
     document.getElementById('childrenModal').style.display = 'none';
 }
 
-// Temporary store last verified guardian
-let lastVerifiedGuardian = null;
-
 // Simulate NFC scan / verify parent
 async function simulateScan() {
-    const icNumber = document.getElementById('icInput').value.trim(); // changed input ID
+    const icNumber = document.getElementById('icInput').value.trim();
     if (!icNumber) {
-        showNotification('Please enter an IC number');
+        showNotification('Please enter an IC number', 'error');
         return;
     }
 
@@ -91,87 +125,93 @@ async function simulateScan() {
         const response = await fetch('/api/guardians/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `icNumber=${encodeURIComponent(icNumber)}` // send IC instead of name
+            body: `icNumber=${encodeURIComponent(icNumber)}`
         });
 
         const result = await response.json();
 
-        // Close any previous modal
         closeModal();
+        lastVerifiedGuardian = null;
 
         if (result.status === 'success') {
-            lastVerifiedGuardian = result;
-            if (result.children.length > 0) {
-                showChildrenCheckboxes(result.children); // modal popup
-                showNotification(`Select children for pickup.`);
+            lastVerifiedGuardian = { ...result, icNumber: icNumber };
+
+            if (result.children && result.children.length > 0) {
+                showChildrenCheckboxes(result.children);
+                showNotification(`Guardian verified. Select children for pickup.`, 'success');
             } else {
-                // No children, still authorized
-                addPickupToTable(result.guardianName, '-', 'AUTHORIZED');
-                showNotification(`Pickup authorized for ${result.guardianName}. No children.`);
+                showNotification(`Guardian verified, but no children linked.`, 'default');
             }
         } else {
-            // Unauthorized attempt
-            lastVerifiedGuardian = null;
-            addPickupToTable(icNumber, '-', 'UNAUTHORIZED'); // show IC in table
-            showNotification(`Unauthorized pickup attempt for IC: ${icNumber}`);
+            showNotification(`Unauthorized attempt: IC ${icNumber}`, 'error');
         }
 
-        // Refresh stats and table
         fetchPickups();
 
     } catch (error) {
         console.error('Error verifying parent:', error);
-        showNotification('Error connecting to server');
+        showNotification('Error connecting to server', 'error');
     }
 }
 
-
-// Confirm selected children and mark as picked
-function confirmPickup() {
-    if (!lastVerifiedGuardian) {
-        showNotification('No verified parent to confirm.');
+async function confirmPickup() {
+    if (!lastVerifiedGuardian || !lastVerifiedGuardian.icNumber) {
+        showNotification('No verified parent or IC data to confirm.', 'error');
         return;
     }
 
+    const icNumber = lastVerifiedGuardian.icNumber;
     const checkboxes = document.querySelectorAll('#childrenCheckboxes input[type=checkbox]');
-    const selectedChildren = Array.from(checkboxes)
+
+    const selectedChildrenNames = Array.from(checkboxes)
         .filter(cb => cb.checked)
         .map(cb => cb.value);
 
-    if (selectedChildren.length === 0) {
-        showNotification('No children selected for pickup.');
+    if (selectedChildrenNames.length === 0) {
+        showNotification('No children selected for pickup.', 'error');
         return;
     }
 
-    selectedChildren.forEach(childName => {
-        addPickupToTable(lastVerifiedGuardian.guardianName, childName, 'AUTHORIZED');
-    });
+    // Loop through selected children and perform the final security verification
+    for (const childName of selectedChildrenNames) {
+        const studentId = lastVerifiedChildrenMap[childName];
 
-    // Clear and close modal
+        if (!studentId) {
+            showNotification(`Error: Cannot find ID for ${childName}.`, 'error');
+            continue;
+        }
+
+        try {
+            const response = await fetch(`/api/pickups/confirm?studentId=${studentId}&guardianIc=${icNumber}`, {
+                method: 'POST'
+            });
+
+            const statusResult = await response.text();
+
+            if (statusResult === 'AUTHORIZED') {
+                showNotification(`Pickup confirmed for ${childName}`, 'success');
+            }
+            else if (statusResult === 'ABSENT_BLOCKED') {
+                showNotification(`BLOCKED: ${childName} is ABSENT!`, 'error');
+            }
+            else {
+                showNotification(`Pickup denied for ${childName}. Status: ${statusResult}`, 'error');
+            }
+
+        } catch (error) {
+            console.error("Error confirming pickup:", error);
+            showNotification("Server error during verification", 'error');
+        }
+    }
+
     lastVerifiedGuardian = null;
     closeModal();
-    showNotification('Pickup confirmed.');
 
-    // Refresh stats and table
     fetchPickups();
-}
-
-// Add pickup row to table
-function addPickupToTable(parentName, childName, status) {
-    const tableBody = document.getElementById('pickupTable');
-    const timestamp = new Date().toISOString();
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td>${parentName}</td>
-        <td>${childName}</td>
-        <td>${new Date(timestamp).toLocaleString()}</td>
-        <td>${status}</td>
-    `;
-    tableBody.appendChild(row);
 }
 
 // Initial load
 updateTime();
 setInterval(updateTime, 1000);
-fetchPickups();
+document.addEventListener('DOMContentLoaded', fetchPickups);
 setInterval(fetchPickups, 5000);

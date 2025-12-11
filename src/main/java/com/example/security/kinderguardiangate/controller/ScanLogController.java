@@ -37,13 +37,20 @@ public class ScanLogController {
         public List<Map<String, Object>> getAllPickups() {
             return scanLogRepo.findAll().stream().map(log -> {
                 Map<String, Object> map = new HashMap<>();
-                map.put("guardianName", log.getGuardian() != null ? log.getGuardian().getName() : log.getGuardianNameFallback());
-                map.put("studentName", log.getStudent() != null ? log.getStudent().getName() : "-");
+
+                map.put("guardianName", log.getGuardianNameFallback());
+
+                map.put("parentIC", log.getGuardian() != null ? log.getGuardian().getIcNumber() : log.getScannedIc());
+
+                String studentName = (log.getStatus().equals("UNAUTHORIZED") || log.getStudent() == null) ? "-" : log.getStudent().getName();
+                map.put("studentName", studentName);
+
                 map.put("status", log.getStatus());
                 map.put("timestamp", log.getTimestamp());
                 return map;
             }).toList();
         }
+
     }
 
 }
