@@ -1,5 +1,6 @@
 package com.example.security.kinderguardiangate.controller;
 
+import com.example.security.kinderguardiangate.DTO.PickupDTO;
 import com.example.security.kinderguardiangate.service.PickupService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,9 +25,10 @@ public class PickupController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard() {
-        return "dashboard";
-    }
+    public String dashboard() { return "dashboard";}
+
+    @GetMapping("/scanlogs")
+    public String scanlogs() { return "scanlogs";}
 
     @GetMapping("/parent")
     public String parent() {
@@ -38,11 +40,8 @@ public class PickupController {
         return "children";
     }
     @PostMapping("/verify")
-    public String verifyPickup(@RequestParam Long studentId,
-                               @RequestParam String guardianIc,
-                               Model model) {
-        String result = pickupService.verifyPickup(studentId, guardianIc);
-        model.addAttribute("result", result);
-        return "main";
+    public PickupDTO verifyPickup(@RequestParam Long studentId,
+                                  @RequestParam String guardianIc) {
+        return pickupService.verifyPickup(studentId, guardianIc);
     }
 }
