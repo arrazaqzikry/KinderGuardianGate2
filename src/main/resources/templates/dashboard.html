@@ -12,6 +12,19 @@
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .section-box { border: 2px solid #ccc; border-radius: 12px; padding: 20px; background: #fff; margin-bottom: 30px; }
 
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            background-color: #333;
+            color: white;
+            height: 100vh;
+            padding: 20px;
+        }
+        .sidebar h2 { margin-top: 0; }
+        .sidebar ul { list-style: none; padding: 0; }
+        .sidebar li { margin: 15px 0; }
+        .sidebar a { color: white; text-decoration: none; }
+        .sidebar a:hover { text-decoration: underline; }
 
         #attendanceTable { width: 100%; border-collapse: collapse; }
         #attendanceTable th, #attendanceTable td { padding: 12px; border-bottom: 1px solid #ccc; }
@@ -25,14 +38,108 @@
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
-            background-color: #4CAF50;
-            color: white;
         }
-        .controls button:hover { background-color: #45a049; }
+        .controls button:hover { opacity: 0.9; }
+
+        #submitAttendanceBtn { background-color: #4CAF50; color: white; }
+        #editAttendanceBtn { background-color: #f39c12; color: white; }
+
+        /* Logout button */
+        .header-right button {
+            background-color: #333;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .header-right button:hover { background-color: #555; }
+
+        /* MODERN GLASS POPUP */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            margin: 12% auto;
+            padding: 30px;
+            border-radius: 18px;
+            width: 380px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            animation: slideUp 0.35s ease-out;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            font-size: 24px;
+            color: #222;
+            font-weight: bold;
+        }
+
+        .modal-content p {
+            color: #555;
+            font-size: 15px;
+            margin-top: 10px;
+        }
+
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 26px;
+            color: #666;
+            transition: 0.2s;
+        }
+        .close:hover {
+            color: #000;
+            transform: scale(1.2);
+        }
+
+        .modal-btn {
+            background: linear-gradient(135deg, #4CAF50, #3d8f41);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 25px;
+            font-size: 15px;
+            font-weight: bold;
+            transition: 0.25s;
+            box-shadow: 0px 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 6px 18px rgba(76, 175, 80, 0.55);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
     </style>
 </head>
 <body>
 
+<!-- SIDEBAR -->
 <aside class="sidebar">
     <h2>KinderGuardian</h2>
     <ul>
@@ -43,6 +150,7 @@
     </ul>
 </aside>
 
+<!-- MAIN PAGE -->
 <div class="main-content">
 
     <header>
@@ -57,9 +165,8 @@
         <h2>Student lists</h2>
 
         <div class="controls">
-            <button id="editAttendanceBtn" onclick="enableEditing()" style="display: none; background-color: #f39c12;">Edit</button>
-
-            <button id="submitAttendanceBtn" onclick="saveAttendance()">Submit</button>
+            <button id="editAttendanceBtn" onclick="enableEditing()" style="display: none;">Edit</button>
+            <button id="submitAttendanceBtn" onclick="handleSubmit()">Submit</button>
         </div>
 
         <table id="attendanceTable">
@@ -67,16 +174,76 @@
             <tr>
                 <th style="width: 15%;">ID</th>
                 <th style="width: 50%;">Name</th>
-                <th class="status-cell">Present </th>
-                <th class="status-cell">Absent </th>
+                <th class="status-cell">Present ✔️</th>
+                <th class="status-cell">Absent ❌</th>
             </tr>
             </thead>
-            <tbody id="attendanceTableBody">
-            </tbody>
+            <tbody id="attendanceTableBody"></tbody>
         </table>
     </section>
 </div>
 
+<!-- SUCCESS POPUP -->
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>🎉 Attendance Submitted!</h2>
+        <p>Your attendance has been recorded successfully.</p>
+        <button class="modal-btn" onclick="closeModal()">Okay</button>
+    </div>
+</div>
+
+<!-- ALERT POPUP -->
+<div id="alertModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeAlert()">&times;</span>
+        <h2 id="alertTitle">⚠️ Alert</h2>
+        <p id="alertMessage"></p>
+        <button class="modal-btn" onclick="closeAlert()">Got it</button>
+    </div>
+</div>
+
 <script src="/js/attendance.js" defer></script>
+
+<script>
+    /* SUCCESS POPUP */
+    function handleSubmit() {
+        saveAttendance();
+    }
+    function showModal() {
+        document.getElementById("successModal").style.display = "block";
+    }
+    function closeModal() {
+        document.getElementById("successModal").style.display = "none";
+    }
+
+    /* ALERT POPUP */
+    function showAlert(title, message) {
+        document.getElementById("alertTitle").innerText = title;
+        document.getElementById("alertMessage").innerText = message;
+        document.getElementById("alertModal").style.display = "block";
+    }
+    function closeAlert() {
+        document.getElementById("alertModal").style.display = "none";
+    }
+
+    /* CLICK OUTSIDE TO CLOSE */
+    window.onclick = function(event) {
+        const s = document.getElementById("successModal");
+        const a = document.getElementById("alertModal");
+        if (event.target === s) s.style.display = "none";
+        if (event.target === a) a.style.display = "none";
+    };
+
+    /* AUTO LOAD NAME LIST */
+    document.addEventListener("DOMContentLoaded", function () {
+        if (typeof loadAttendanceTable === "function") {
+            loadAttendanceTable();
+        } else {
+            console.error("❌ loadAttendanceTable() is missing in attendance.js");
+        }
+    });
+</script>
+
 </body>
 </html>
