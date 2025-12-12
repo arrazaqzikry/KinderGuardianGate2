@@ -1,9 +1,6 @@
 package com.example.security.kinderguardiangate.controller;
 
 import com.example.security.kinderguardiangate.DTO.StudentDTO;
-import com.example.security.kinderguardiangate.model.Attendance;
-import com.example.security.kinderguardiangate.model.Guardian;
-import com.example.security.kinderguardiangate.model.ScanLog;
 import com.example.security.kinderguardiangate.model.Student;
 import com.example.security.kinderguardiangate.repository.AttendanceRepository;
 import com.example.security.kinderguardiangate.repository.StudentRepository;
@@ -25,6 +22,9 @@ public class StudentController {
     @Autowired
     private ScanLogRepository scanLogRepo; // in case scan logs reference students
 
+    @Autowired
+    private AttendanceRepository attendanceRepo;
+
     @GetMapping
     public List<StudentDTO> getAllStudents() {
         return studentRepo.findAll().stream()
@@ -44,33 +44,23 @@ public class StudentController {
         return studentRepo.save(student);
     }
 
-    @Autowired
-    private AttendanceRepository attendanceRepo;
-
+    // Safe delete method
     @Transactional
     @DeleteMapping("/{id}")
     public void deleteStudent(@PathVariable Long id) {
         Student student = studentRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found with id " + id));
 
-        // Delete related attendance records
-        attendanceRepo.deleteByStudentId(student.getId());
-
-        // Delete related scan logs
-        scanLogRepo.deleteByStudentId(student.getId());
-
         // Detach from guardians
-        if (student.getGuardians() != null) {
-            for (Guardian guardian : student.getGuardians()) {
-                guardian.getStudents().remove(student);
-            }
-            student.getGuardians().clear();
-        }
+        student.getGuardians().forEach(g -> g.getStudents().remove(student));
+        student.getGuardians().clear();
 
-        // Finally delete student
+        // Delete related scan logs and attendances
+        scanLogRepo.deleteAll(scanLogRepo.findByStudentId(student.getId()));
+        attendanceRepo.deleteAll(attendanceRepo.findByStudent_Id(student.getId()));
+
+        // Delete student
         studentRepo.delete(student);
     }
-
-
 
 }
