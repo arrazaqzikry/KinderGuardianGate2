@@ -4,13 +4,12 @@ import com.example.security.kinderguardiangate.model.Guardian;
 import com.example.security.kinderguardiangate.model.People;
 import com.example.security.kinderguardiangate.model.ScanLog;
 import com.example.security.kinderguardiangate.model.Student;
-import com.example.security.kinderguardiangate.repository.GuardianRepository;
-import com.example.security.kinderguardiangate.repository.PeopleRepository;
-import com.example.security.kinderguardiangate.repository.StudentRepository;
-import com.example.security.kinderguardiangate.repository.ScanLogRepository;
+import com.example.security.kinderguardiangate.repository.*;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,6 +27,8 @@ public class GuardianController {
     @Autowired
     private ScanLogRepository scanLogRepo;
 
+    @Autowired
+    private AttendanceRepository attendanceRepo;
     // Get all guardians with their assigned children names
     @GetMapping
     public List<Map<String, Object>> getAllGuardians() {
@@ -117,6 +118,15 @@ public class GuardianController {
                         Map<String, Object> childMap = new HashMap<>();
                         childMap.put("id", s.getId());
                         childMap.put("name", s.getName());
+
+                        // Get today's attendance status for this student
+                        attendanceRepo.findByStudentIdAndAttendanceDate(s.getId(), LocalDate.now())
+                                .ifPresentOrElse(att -> {
+                                    childMap.put("attendance", att.getStatus()); // "PRESENT" or "ABSENT"
+                                }, () -> {
+                                    childMap.put("attendance", "ABSENT"); // default if no attendance found
+                                });
+
                         return childMap;
                     })
                     .collect(Collectors.toList());
@@ -147,10 +157,5 @@ public class GuardianController {
 
         return response;
     }
-
-
-
-
-
 
 }

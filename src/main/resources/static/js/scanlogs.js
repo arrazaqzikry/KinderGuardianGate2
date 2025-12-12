@@ -93,11 +93,18 @@ function showChildrenCheckboxes(children) {
         checkbox.type = 'checkbox';
         checkbox.id = `child-${childId}`;
         checkbox.value = childName;
-        checkbox.checked = true;
+
+        // If attendance is not PRESENT, disable the checkbox
+        if (child.attendance && child.attendance !== 'PRESENT') {
+            checkbox.checked = false;
+            checkbox.disabled = true;
+            checkbox.style.cursor = 'not-allowed'; // show not-allowed cursor on checkbox
+        } else {
+            checkbox.checked = true;
+        }
 
         const label = document.createElement('label');
         label.htmlFor = `child-${childId}`;
-
         const statusText = child.status && child.status !== 'PRESENT' ? ` (${child.status})` : '';
         label.innerText = childName + statusText;
 
@@ -110,6 +117,7 @@ function showChildrenCheckboxes(children) {
 
     document.getElementById('childrenModal').style.display = 'block';
 }
+
 
 // Close modal
 function closeModal() {
