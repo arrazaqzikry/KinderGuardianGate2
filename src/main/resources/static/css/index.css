@@ -1,0 +1,120 @@
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Card Container */
+.auth-card {
+    background: #fff;
+    border-radius: 20px;
+    width: 380px;
+    max-width: 90%;
+    padding: 40px 35px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.5s ease;
+}
+
+.auth-card h2 {
+    font-size: 28px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 25px;
+}
+
+/* Form Styling */
+.auth-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    border-radius: 12px;
+    border: 2px solid #dcdcdc;
+    outline: none;
+    transition: 0.3s;
+}
+
+.auth-card input:focus {
+    border-color: #4A90E2;
+    box-shadow: 0 0 8px rgba(74, 144, 226, 0.35);
+}
+
+/* Button Styling */
+.auth-btn {
+    width: 100%;
+    padding: 15px 0;
+    border: none;
+    border-radius: 30px;
+    background: linear-gradient(90deg, #4A90E2, #007BFF);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+}
+
+.auth-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.12);
+    box-shadow: 0 8px 20px rgba(0,123,255,0.45);
+}
+
+/* Footer Links */
+.auth-card p {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #666;
+}
+
+.auth-card a {
+    color: #007BFF;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.auth-card a:hover {
+    text-decoration: underline;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive */
+@media(max-width: 400px) {
+    .auth-card {
+        padding: 30px 20px;
+    }
+
+    .auth-card h2 {
+        font-size: 24px;
+    }
+
+    .auth-card input,
+    .auth-btn {
+        font-size: 15px;
+        padding: 12px 14px;
+    }
+}

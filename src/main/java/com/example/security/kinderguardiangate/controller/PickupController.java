@@ -30,9 +30,9 @@ public class PickupController {
     @GetMapping("/scanlogs")
     public String scanlogs() { return "scanlogs";}
 
-    @GetMapping("/parent")
+    @GetMapping("/guardian")
     public String parent() {
-        return "parent";
+        return "guardian";
     }
 
     @GetMapping("/children")
