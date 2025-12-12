@@ -1,16 +1,16 @@
 package com.example.security.kinderguardiangate.controller;
 
 import com.example.security.kinderguardiangate.model.Guardian;
+import com.example.security.kinderguardiangate.model.People;
 import com.example.security.kinderguardiangate.model.ScanLog;
 import com.example.security.kinderguardiangate.model.Student;
 import com.example.security.kinderguardiangate.repository.GuardianRepository;
+import com.example.security.kinderguardiangate.repository.PeopleRepository;
 import com.example.security.kinderguardiangate.repository.StudentRepository;
 import com.example.security.kinderguardiangate.repository.ScanLogRepository;
-
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -98,47 +98,59 @@ public class GuardianController {
         guardianRepo.delete(guardian);
     }
 
+    @Autowired
+    private PeopleRepository peopleRepo;
+
     @PostMapping("/verify")
-    public Map<String,Object> verifyParent(@RequestParam String icNumber) {
-        Map<String,Object> response = new HashMap<>();
+    public Map<String, Object> verifyParent(@RequestParam String icNumber) {
+        Map<String, Object> response = new HashMap<>();
 
         Optional<Guardian> guardianOpt = guardianRepo.findAll().stream()
                 .filter(g -> g.getIcNumber().equalsIgnoreCase(icNumber))
                 .findFirst();
 
-        // Create a new scan log object
-        ScanLog log = new ScanLog();
-        log.setTimestamp(LocalDateTime.now());
-        log.setScannedIc(icNumber);
-
         if (guardianOpt.isPresent()) {
             Guardian guardian = guardianOpt.get();
 
             List<Map<String, Object>> children = guardian.getStudents().stream()
-                    .map(student -> {
-                        Map<String, Object> childInfo = new HashMap<>();
-                        childInfo.put("id", student.getId());
-                        childInfo.put("name", student.getName());
-                        return childInfo;
+                    .map(s -> {
+                        Map<String, Object> childMap = new HashMap<>();
+                        childMap.put("id", s.getId());
+                        childMap.put("name", s.getName());
+                        return childMap;
                     })
-                    .toList();
+                    .collect(Collectors.toList());
 
             response.put("status", "success");
             response.put("guardianName", guardian.getName());
             response.put("children", children);
 
-            return response;
+            // Do NOT save ScanLog yet — will save after checkbox confirmation
 
         } else {
+            // Check in People table
+            Optional<People> personOpt = peopleRepo.findByIcNumber(icNumber);
+            String nameToUse = personOpt.map(People::getName).orElse("Unknown");
 
             response.put("status", "failure");
-            response.put("guardianName", "Unknown");
+            response.put("guardianName", nameToUse);
             response.put("children", List.of());
 
+            // Save ScanLog immediately for unauthorized/fallback
+            ScanLog log = new ScanLog();
+            log.setTimestamp(LocalDateTime.now());
+            log.setScannedIc(icNumber);
             log.setStatus("UNAUTHORIZED");
+            log.setGuardianName(nameToUse); // must have this field in ScanLog
             scanLogRepo.save(log);
-
-            return response;
         }
+
+        return response;
     }
+
+
+
+
+
+
 }

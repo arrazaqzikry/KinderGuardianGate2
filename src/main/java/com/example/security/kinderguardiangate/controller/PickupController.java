@@ -3,6 +3,7 @@ package com.example.security.kinderguardiangate.controller;
 import com.example.security.kinderguardiangate.DTO.PickupDTO;
 import com.example.security.kinderguardiangate.service.PickupService;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
@@ -29,7 +30,7 @@ public class PickupController {
     @GetMapping("/scanlogs")
     public String scanlogs() { return "scanlogs";}
 
-    @GetMapping("/guardian")
+    @GetMapping("/parent")
     public String parent() {
         return "guardian";
     }

@@ -22,16 +22,19 @@ async function fetchPickups() {
         const pickups = await response.json();
 
         document.getElementById('totalPickups').innerText = pickups.length;
-        const unauthorized = pickups.filter(p => p.status && (p.status === 'UNAUTHORIZED')).length;
+        const unauthorized = pickups.filter(p => p.status && (p.status === 'UNAUTHORIZED' || p.status === 'ABSENT_BLOCK')).length;
         const pending = pickups.filter(p => p.status && p.status === 'PENDING').length;
+
         document.getElementById('unauthPickups').innerText = unauthorized;
         document.getElementById('pendingPickups').innerText = pending;
 
         // Update pickup table
         const tableBody = document.getElementById('pickupTable');
         tableBody.innerHTML = '';
+
         pickups.forEach(p => {
             const row = document.createElement('tr');
+
             let displayStatus = p.status;
             let statusClass = '';
 
@@ -40,26 +43,29 @@ async function fetchPickups() {
                 statusClass = 'authorized';
                 displayStatus = 'AUTHORIZED';
             } else if (p.status === 'ABSENT_BLOCK') {
-                statusClass = 'absent';
+                statusClass = 'unauthorized';
                 displayStatus = 'ABSENT';
             } else if (p.status === 'UNAUTHORIZED') {
                 statusClass = 'unauthorized';
                 displayStatus = 'UNAUTHORIZED';
             }
-
             row.classList.add(statusClass);
 
             const studentDisplay = (p.status === 'UNAUTHORIZED' || !p.studentName || p.studentName === '-') ? '-' : p.studentName;
 
+            const displayName = p.guardianName || 'Unknown'; // now uses backend name for both authorized & unauthorized
+
+
             row.innerHTML = `
-                <td>${p.guardianName || 'Unknown'}</td>
-                <td>${p.parentIC || '-'}</td>
+                <td>${displayName}</td>
+                <td>${p.parentIC || '-'}</td> 
                 <td>${studentDisplay}</td>
                 <td>${new Date(p.timestamp).toLocaleString()}</td>
                 <td>${displayStatus || '-'}</td>
             `;
             tableBody.appendChild(row);
         });
+
     } catch (error) {
         console.error('Error fetching pickups:', error);
         showNotification('Error fetching pickup data', 'error');
@@ -91,12 +97,14 @@ function showChildrenCheckboxes(children) {
 
         const label = document.createElement('label');
         label.htmlFor = `child-${childId}`;
+
         const statusText = child.status && child.status !== 'PRESENT' ? ` (${child.status})` : '';
         label.innerText = childName + statusText;
 
         const div = document.createElement('div');
         div.appendChild(checkbox);
         div.appendChild(label);
+
         container.appendChild(div);
     });
 
@@ -124,29 +132,31 @@ async function simulateScan() {
         });
 
         const result = await response.json();
+
         closeModal();
         lastVerifiedGuardian = null;
 
         if (result.status === 'success') {
             lastVerifiedGuardian = { ...result, icNumber: icNumber };
+
             if (result.children && result.children.length > 0) {
                 showChildrenCheckboxes(result.children);
-                showNotification('Guardian verified. Select children for pickup.', 'success');
+                showNotification(`Guardian verified. Select children for pickup.`, 'success');
             } else {
-                showNotification('Guardian verified, but no children linked.', 'default');
+                showNotification(`Guardian verified, but no children linked.`, 'default');
             }
         } else {
             showNotification(`Unauthorized attempt: IC ${icNumber}`, 'error');
         }
 
         fetchPickups();
+
     } catch (error) {
         console.error('Error verifying parent:', error);
         showNotification('Error connecting to server', 'error');
     }
 }
 
-// Confirm pickup
 async function confirmPickup() {
     if (!lastVerifiedGuardian || !lastVerifiedGuardian.icNumber) {
         showNotification('No verified parent or IC data to confirm.', 'error');
@@ -155,6 +165,7 @@ async function confirmPickup() {
 
     const icNumber = lastVerifiedGuardian.icNumber;
     const checkboxes = document.querySelectorAll('#childrenCheckboxes input[type=checkbox]');
+
     const selectedChildrenNames = Array.from(checkboxes)
         .filter(cb => cb.checked)
         .map(cb => cb.value);
@@ -167,22 +178,29 @@ async function confirmPickup() {
     // Loop through selected children and perform the final security verification
     for (const childName of selectedChildrenNames) {
         const studentId = lastVerifiedChildrenMap[childName];
+
         if (!studentId) {
             showNotification(`Error: Cannot find ID for ${childName}.`, 'error');
             continue;
         }
 
         try {
-            const response = await fetch(`/api/pickups/confirm?studentId=${studentId}&guardianIc=${icNumber}`, { method: 'POST' });
+            const response = await fetch(`/api/pickups/confirm?studentId=${studentId}&guardianIc=${icNumber}`, {
+                method: 'POST'
+            });
+
             const statusResult = await response.text();
 
             if (statusResult === 'AUTHORIZED') {
                 showNotification(`Pickup confirmed for ${childName}`, 'success');
-            } else if (statusResult === 'ABSENT_BLOCKED') {
+            }
+            else if (statusResult === 'ABSENT_BLOCKED') {
                 showNotification(`BLOCKED: ${childName} is ABSENT!`, 'error');
-            } else {
+            }
+            else {
                 showNotification(`Pickup denied for ${childName}. Status: ${statusResult}`, 'error');
             }
+
         } catch (error) {
             console.error("Error confirming pickup:", error);
             showNotification("Server error during verification", 'error');
@@ -191,6 +209,7 @@ async function confirmPickup() {
 
     lastVerifiedGuardian = null;
     closeModal();
+
     fetchPickups();
 }
 
